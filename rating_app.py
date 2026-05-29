@@ -12,15 +12,26 @@ if uploaded_file:
     df = pd.read_excel(uploaded_file)
     df.columns = [str(col).strip() for col in df.columns]
 
-    st.write("**Названия колонок в твоём файле:**")
-    st.write(list(df.columns))
+    # Автоматический поиск нужных колонок
+    def find_col(keywords):
+        for col in df.columns:
+            if any(kw.lower() in str(col).lower() for kw in keywords):
+                return col
+        return None
 
-    # Безопасный фильтр
-    status_col = [col for col in df.columns if 'татус' in col or 'Status' in col]
-    status_col = status_col[0] if status_col else 'Статус'
+    platform_col = find_col(['Площадка']) or 'Площадка'
+    status_col = find_col(['Статус']) or 'Статус'
+    name_col = find_col(['Наименование', 'Название']) or 'Наименование'
+    rating_col = find_col(['Рейтинг']) or 'Рейтинг'
+    reviews_col = find_col(['Кол-во отзывов', 'Отзывов']) or 'Кол-во отзывов'
+    prev_rating_col = find_col(['Предыдущий рейтинг', 'Отличие рейтинг']) or 'Предыдущий рейтинг'
 
-    platform_col = [col for col in df.columns if 'лощадка' in col or 'Platform' in col]
-    platform_col = platform_col[0] if platform_col else 'Площадка'
+    st.write("**Найденные колонки:**")
+    st.write(f"Площадка: {platform_col}")
+    st.write(f"Статус: {status_col}")
+    st.write(f"Наименование: {name_col}")
+    st.write(f"Рейтинг: {rating_col}")
+    st.write(f"Кол-во отзывов: {reviews_col}")
 
     # Фильтры
     platforms = ['Лемана про', 'Лемана про МП', 'Мегастрой', 'Максидом', 'Петрович', 'Все инструменты']
@@ -28,15 +39,15 @@ if uploaded_file:
     df = df[~df[status_col].astype(str).str.contains('Закрыт', na=False)]
 
     # Приводим числа
-    for col in ['Рейтинг', 'Кол-во отзывов', 'Предыдущий рейтинг']:
+    for col in [rating_col, reviews_col, prev_rating_col]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
 
     def get_priority(row):
-        rating = row.get('Рейтинг', 0)
-        prev = row.get('Предыдущий рейтинг', rating)
-        reviews = row.get('Кол-во отзывов', 0)
-        name = str(row.get('Наименование', '')).lower()
+        rating = row.get(rating_col, 0)
+        prev = row.get(prev_rating_col, rating)
+        reviews = row.get(reviews_col, 0)
+        name = str(row.get(name_col, '')).lower()
 
         if rating <= 3.9:
             return 1, "1. Критично низкий рейтинг"
