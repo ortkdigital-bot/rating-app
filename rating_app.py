@@ -4,18 +4,28 @@ from datetime import datetime
 
 st.set_page_config(page_title="Рейтинг 4.5+", layout="wide")
 st.title("🚀 Автоматизация отбора артикулов для отзывов")
-st.subheader("Цель: 4.5+ на всех площадках")
+st.caption("Цель: 4.5+ на всех площадках")
 
-uploaded_file = st.file_uploader("Загрузи Excel-отчёт от аналитики", type=["xlsx", "xls"])
+uploaded_file = st.file_uploader("Загрузи Excel-отчёт от аналитики", type=["xlsx"])
 
 if uploaded_file:
     df = pd.read_excel(uploaded_file)
     df.columns = [str(col).strip() for col in df.columns]
 
+    st.write("**Названия колонок в твоём файле:**")
+    st.write(list(df.columns))
+
+    # Безопасный фильтр
+    status_col = [col for col in df.columns if 'татус' in col or 'Status' in col]
+    status_col = status_col[0] if status_col else 'Статус'
+
+    platform_col = [col for col in df.columns if 'лощадка' in col or 'Platform' in col]
+    platform_col = platform_col[0] if platform_col else 'Площадка'
+
     # Фильтры
     platforms = ['Лемана про', 'Лемана про МП', 'Мегастрой', 'Максидом', 'Петрович', 'Все инструменты']
-    df = df[df.get('Площадка', '').isin(platforms)]
-    df = df[~df.get('Статус', '').astype(str).str.contains('Закрыт', na=False)]
+    df = df[df[platform_col].isin(platforms)]
+    df = df[~df[status_col].astype(str).str.contains('Закрыт', na=False)]
 
     # Приводим числа
     for col in ['Рейтинг', 'Кол-во отзывов', 'Предыдущий рейтинг']:
@@ -42,14 +52,10 @@ if uploaded_file:
 
     df = df.sort_values(by=['Приоритет', 'Рейтинг'])
 
-    st.dataframe(df[['Площадка', 'Артикул площадки', 'Наименование', 'Рейтинг', 
-                     'Кол-во отзывов', 'Статус', 'Приоритет', 'Причина']], 
-                 use_container_width=True, height=800)
+    st.dataframe(df, use_container_width=True)
 
     if st.button("💾 Экспорт в Excel"):
         filename = f"Приоритет_отзывов_{datetime.now().strftime('%Y-%m-%d')}.xlsx"
         df.to_excel(filename, index=False)
         st.success("Файл готов!")
-        st.download_button("Скачать", open(filename, "rb").read(), filename)
-
-st.sidebar.success("Приложение готово")
+        st.download_button("Скачать", data=open(filename, "rb").read(), file_name=filename)
